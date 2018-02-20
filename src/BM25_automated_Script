@@ -1,0 +1,45 @@
+i##!/bin/bash
+rm BM25_Combinations.txt
+cd /home/ubuntu/solr/solr-6.2.1/IRF16P3/solr/BM25/conf
+##rm schema.xml
+rm schema-Orig.xml
+cp schema.xml schema-Orig.xml
+sed -i 's/<float name="b">0.20<\/float>/<float name="b">0.20<\/float>/g' /home/ubuntu/solr/solr-6.2.1/IRF16P3/solr/BM25/conf/schema.xml
+sed -i 's/<float name="k1">1.15<\/float>/<float name="k1">1.15<\/float>/g' /home/ubuntu/solr/solr-6.2.1/IRF16P3/solr/BM25/conf/schema.xml
+echo "start" > BM25_Combinations.txt
+current_k1=1.10
+current_b=0.15
+offset=0.05
+for (( i=0; i<18; i++ ));
+do
+	current_b=0.15
+        cd /home/ubuntu/solr/solr-6.2.1/IRF16P3/solr/BM25/conf
+        to_update_k1=$(echo "$current_k1" + "$offset"|bc)
+        echo $to_update_k1
+        sed -i 's/<float name="k1">'"${current_k1}"'<\/float>/<float name="k1">'"${to_update_k1}"'<\/float>/g' /home/ubuntu/solr/solr-6.2.1/IRF16P3/solr/BM25/conf/schema.xml
+        current_k1=$to_update_k1
+            for (( j=0; j<20; j++ ));
+            do
+                to_update_b=$(echo "$current_b" + "$offset"|bc)
+                cd /home/ubuntu/solr/solr-6.2.1/IRF16P3/solr/BM25/conf
+		##echo "inside b loop"
+                sed -i 's/<float name="b">'"${current_b}"'<\/float>/<float name="b">'"${to_update_b}"'<\/float>/g' /home/ubuntu/solr/solr-6.2.1/IRF16P3/solr/BM25/conf/schema.xml
+                ##echo "hmm"
+		current_b=$to_update_b
+                cd /home/ubuntu/automation/BM25
+                echo "New Combination"  >> BM25_Combinations.txt 
+		echo $current_k1 >> BM25_Combinations.txt
+		echo $current_b >> BM25_Combinations.txt
+                sh ./script_BM25
+            done
+                cd /home/ubuntu/solr/solr-6.2.1/IRF16P3/solr/BM25/conf
+		sed -i 's/<float name="b">'"${current_b}"'<\/float>/<float name="b">0<\/float>/g' /home/ubuntu/solr/solr-6.2.1/IRF16P3/solr/BM25/conf/schema.xml
+done
+cd /home/ubuntu/solr/solr-6.2.1/IRF16P3/solr/BM25/conf
+rm schema.xml
+cp schema-Orig.xml schema.xml
+cd /home/ubuntu/solr/solr-6.2.1
+bin/solr restart -s IRF16P3/solr
+sleep 10
+bin/post -p 8983 -c BM25 /home/ubuntu/automation/BM25/train.json
+sleep 10

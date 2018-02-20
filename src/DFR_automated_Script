@@ -1,0 +1,75 @@
+rm DFR_Combinations.txt
+cd /home/ubuntu/solr-6.2.0/demo/solr/DFR/conf
+rm schema-Orig.xml
+cp schema.xml schema-Orig.xml
+declare -a BasicModel=('Be' 'G' 'P' 'D' 'I(n)' 'I(ne)' 'I(F)');
+declare -a AfterEffect=('L' 'B' 'none');
+declare -a Normalization=('H1' 'H2' 'H3' 'Z' 'none');
+
+
+sed -i 's/<str name="basicModel">G<\/str>/<str name="basicModel">Be<\/str>/g' /home/ubuntu/solr-6.2.0/demo/solr/DFR/conf/schema.xml
+sed -i 's/<str name="afterEffect">B<\/str>/<str name="afterEffect">L<\/str>/g' /home/ubuntu/solr-6.2.0/demo/solr/DFR/conf/schema.xml
+sed -i 's/<str name="normalization">H2<\/str>/<str name="normalization">H1<\/str>/g' /home/ubuntu/solr-6.2.0/demo/solr/DFR/conf/schema.xml
+
+##echo "start" > DFR_Combinations.txt
+n_basicModels=6
+n_AfterEffect=2
+n_normalization=4
+
+for (( i=0; i<=5; i++ ));
+do
+        cd /home/ubuntu/solr-6.2.0/demo/solr/DFR/conf
+        echo ${BasicModel[$i]}
+	if [ "$i" != "0" ]
+	then
+        sed -i 's/<str name="basicModel">'"${BasicModel[$(echo "$i" - 1)]}"'<\/str>/<str name="basicModel">'"${BasicModel[$i]}"'<\/str>/g' schema.xml
+	fi
+            for (( j=0; j<=n_AfterEffect; j++ ));
+            do
+		echo ${AfterEffect[$j]}
+                cd /home/ubuntu/solr-6.2.0/demo/solr/DFR/conf
+		if [ "$j" != "0" ]
+		then
+                sed -i 's/<str name="afterEffect">'"${AfterEffect[$(echo "$j" - 1)]}"'<\/str>/<str name="afterEffect">'"${AfterEffect[$j]}"'<\/str>/g' schema.xml
+		fi
+
+		         for (( k=0; k<=n_normalization; k++ ));
+           		 do
+		               echo ${Normalization[$k]}
+		                cd /home/ubuntu/solr-6.2.0/demo/solr/DFR/conf
+		                if [ "$k" != "0" ]
+        		        then
+               	 		sed -i 's/<str name="normalization">'"${Normalization[$(echo "$k" - 1)]}"'<\/str>/<str name="normalization">'"${Normalization[$k]}"'<\/str>/g' schema.xml
+				fi
+
+				if [ "$k" -eq "2" ]
+				then
+					sed -i 's/<float name="c">1<\/float>/<!--float name="c">1<\/float-->/g' schema.xml
+				fi
+				cd /home/ubuntu/auntomation/DFR
+                        	echo "New Combination"  >> DFR_Combinations.txt 
+				echo ${BasicModel["$i"]}  >> DFR_Combinations.txt
+                                echo ${AfterEffect["$j"]} >> DFR_Combinations.txt
+                                echo ${Normalization["$k"]} >> DFR_Combinations.txt
+        			sh ./script_DFR
+				cd /home/ubuntu/solr-6.2.0/demo/solr/DFR/conf
+				if [ "$k" -eq "$n_normalization" ]
+				then
+					sed -i 's/<!--float name="c">1<\/float-->/<float name="c">1<\/float>/g' schema.xml
+				fi
+			done
+                        cd /home/ubuntu/solr-6.2.0/demo/solr/DFR/conf
+			sed -i 's/<str name="normalization">'"${Normalization[n_normalization]}"'<\/str>/<str name="normalization">'"${Normalization[0]}"'<\/str>/g' schema.xml
+
+            done
+                cd /home/ubuntu/solr-6.2.0/demo/solr/DFR/conf
+		sed -i 's/<str name="afterEffect">'"${AfterEffect[n_AfterEffect]}"'<\/str>/<str name="afterEffect">'"${AfterEffect[0]}"'<\/str>/g' schema.xml
+done
+cd /home/ubuntu/solr-6.2.0/demo/solr/DFR/conf
+rm schema.xml
+cp schema-Orig.xml schema.xml
+cd /home/ubuntu/solr-6.2.0
+bin/solr restart -s demo/solr
+sleep 10
+bin/post -p 8983 -c DFR /home/ubuntu/train.json
+sleep 10
